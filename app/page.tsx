@@ -1,3 +1,6 @@
+"use client"
+
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import Link from "next/link"
@@ -5,8 +8,54 @@ import { Badge } from "@/components/ui/badge"
 import Typewriter from "@/components/typewriter"
 import AnimatedCounter from "@/components/animated-counter"
 import SkillBar from "@/components/skill-bar"
+import { getUsers } from "@/lib/api"
+import { Github, Linkedin, Twitter, Instagram, Globe } from "lucide-react"
+
+type User = {
+  id: number
+  name: string
+  email?: string
+  phone?: string
+  bio?: string
+  shortDescriptions?: string[]
+  generalDescription?: string
+  location?: string
+  profileImageUrl?: string
+  yearsOfExperience?: number
+  githubUrl?: string
+  linkedinUrl?: string
+  twitterUrl?: string
+  instagramUrl?: string
+  websiteUrl?: string
+}
 
 export default function HomePage() {
+  const [user, setUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  const normalizeUser = (raw: any): User => {
+    if (!raw) return raw
+    return {
+      ...raw,
+      profileImageUrl: raw.profileImageUrl ?? raw.ProfileImageUrl ?? raw.imageUrl ?? raw.ImageUrl,
+      githubUrl: raw.githubUrl ?? raw.GitHubUrl ?? raw.GithubUrl ?? raw.github ?? undefined,
+      linkedinUrl: raw.linkedinUrl ?? raw.LinkedInUrl ?? raw.LinkedinUrl ?? undefined,
+      twitterUrl: raw.twitterUrl ?? raw.TwitterUrl ?? undefined,
+      instagramUrl: raw.instagramUrl ?? raw.InstagramUrl ?? undefined,
+      websiteUrl: raw.websiteUrl ?? raw.WebsiteUrl ?? raw.site ?? raw.website ?? undefined,
+    }
+  }
+
+  useEffect(() => {
+    ;(async () => {
+      try {
+        const list = await getUsers()
+        setUser(Array.isArray(list) && list.length > 0 ? normalizeUser(list[0]) : null)
+      } finally {
+        setLoading(false)
+      }
+    })()
+  }, [])
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
@@ -33,38 +82,48 @@ export default function HomePage() {
 
           <div className="mb-8">
             <div className="w-32 h-32 mx-auto mb-6 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 border-4 border-primary/30 flex items-center justify-center overflow-hidden group hover:scale-110 transition-all duration-500 hover:shadow-2xl hover:shadow-primary/25">
-              <div className="w-full h-full bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center group-hover:rotate-12 transition-transform duration-500">
-                <svg
-                  className="w-16 h-16 text-primary/60 group-hover:text-primary transition-colors duration-300"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={1.5}
-                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                  />
-                </svg>
-              </div>
+              {user?.profileImageUrl ? (
+                <img
+                  src={`/api/media/${user.profileImageUrl.replace(/^\/+/, "")}`}
+                  alt={user.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center group-hover:rotate-12 transition-transform duration-500">
+                  <svg
+                    className="w-16 h-16 text-primary/60 group-hover:text-primary transition-colors duration-300"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                    />
+                  </svg>
+                </div>
+              )}
             </div>
           </div>
 
           <h1 className="text-4xl sm:text-6xl font-bold text-foreground mb-6 text-balance">
             Hola, soy{" "}
             <span className="text-primary bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              Javier Guerra
+              {user?.name ?? "Tu Nombre"}
             </span>
           </h1>
 
           <div className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto leading-relaxed text-pretty min-h-[3rem]">
             <Typewriter
-              texts={[
-                "Desarrollador Full Stack apasionado por crear experiencias digitales increíbles",
-                "Especializado en React, Next.js y tecnologías modernas",
-                "Creando aplicaciones web y móviles que impactan",
-              ]}
+              texts={user?.shortDescriptions && user.shortDescriptions.length > 0
+                ? user.shortDescriptions
+                : [
+                    user?.generalDescription || "Desarrollador Full Stack",
+                    "Especializado en React, Next.js y tecnologías modernas",
+                    "Creando aplicaciones web y móviles que impactan",
+                  ]}
               className="text-xl text-muted-foreground"
             />
           </div>
@@ -92,6 +151,70 @@ export default function HomePage() {
               </Link>
             </Button>
           </div>
+
+          {/* Social links (solo si existen) */}
+          <div className="mt-6 flex items-center justify-center gap-3">
+            {user?.githubUrl && (
+              <a
+                href={user.githubUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="GitHub"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border hover:bg-primary/5 hover:text-primary transition-colors"
+                title="GitHub"
+              >
+                <Github className="h-5 w-5" />
+              </a>
+            )}
+            {user?.linkedinUrl && (
+              <a
+                href={user.linkedinUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="LinkedIn"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border hover:bg-primary/5 hover:text-primary transition-colors"
+                title="LinkedIn"
+              >
+                <Linkedin className="h-5 w-5" />
+              </a>
+            )}
+            {user?.twitterUrl && (
+              <a
+                href={user.twitterUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Twitter"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border hover:bg-primary/5 hover:text-primary transition-colors"
+                title="Twitter"
+              >
+                <Twitter className="h-5 w-5" />
+              </a>
+            )}
+            {user?.instagramUrl && (
+              <a
+                href={user.instagramUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Instagram"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border hover:bg-primary/5 hover:text-primary transition-colors"
+                title="Instagram"
+              >
+                <Instagram className="h-5 w-5" />
+              </a>
+            )}
+            {user?.websiteUrl && (
+              <a
+                href={user.websiteUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Sitio Web"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border hover:bg-primary/5 hover:text-primary transition-colors"
+                title="Sitio Web"
+              >
+                <Globe className="h-5 w-5" />
+              </a>
+            )}
+          </div>
         </div>
       </section>
 
@@ -109,7 +232,7 @@ export default function HomePage() {
             </div>
             <div className="group">
               <div className="text-3xl md:text-4xl font-bold text-primary mb-2">
-                <AnimatedCounter end={3} suffix="+" />
+                <AnimatedCounter end={user?.yearsOfExperience ?? 3} suffix="+" />
               </div>
               <p className="text-muted-foreground group-hover:text-foreground transition-colors duration-300">
                 Años Experiencia
