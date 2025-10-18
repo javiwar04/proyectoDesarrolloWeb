@@ -1,34 +1,115 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { useState } from "react"
+import { usePathname, useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
-import { Menu, X, User, Home, FolderOpen, Mail, Briefcase, FileText } from "lucide-react"
+import { Menu, X, User, Home, FolderOpen, Mail, Briefcase, FileText, Shield } from "lucide-react"
+import { getUserById, login } from "@/lib/api"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { toast } from "sonner"
 
 const navItems = [
-  { href: "/", label: "Inicio", icon: Home },
-  { href: "/portafolio", label: "Portafolio", icon: FolderOpen },
-  { href: "/servicios", label: "Servicios", icon: Briefcase },
+  { href: "/portafolio", label: "Inicio", icon: Home },
+  { href: "/portafolios", label: "Portafolios", icon: FolderOpen },
+  { href: "/proyectos", label: "Proyectos", icon: Briefcase },
   { href: "/curriculum", label: "Curriculum", icon: FileText },
   { href: "/contacto", label: "Contacto", icon: Mail },
 ]
 
+type HeaderUser = { id: number; name: string; experienceLevel?: string; yearsOfExperience?: number }
+
 export default function Navigation() {
   const pathname = usePathname()
+  const router = useRouter()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [user, setUser] = useState<HeaderUser | null>(null)
+  // Estado para verificación antes de ir a Admin
+  const [verifyOpen, setVerifyOpen] = useState(false)
+  const [verifyTarget, setVerifyTarget] = useState<HeaderUser | null>(null)
+  const [identifier, setIdentifier] = useState("")
+  const [password, setPassword] = useState("")
+  const [verifying, setVerifying] = useState(false)
+  const [verifyError, setVerifyError] = useState<string | null>(null)
+
+  // Cargar usuario seleccionado para mostrar su nombre y experiencia
+  useEffect(() => {
+    const saved = Number(localStorage.getItem("selectedUserId") || "")
+    if (!Number.isFinite(saved) || saved <= 0) return
+    ;(async () => {
+      try {
+        const u = await getUserById(saved)
+        if (u) setUser({ id: u.id, name: u.name, experienceLevel: u.experienceLevel, yearsOfExperience: u.yearsOfExperience })
+      } catch {}
+    })()
+  }, [])
+
+  // Detectar sesión de admin (simplemente si existe en localStorage)
+  // Ya no usamos sesión global; el acceso Admin pedirá credenciales del usuario seleccionado
+
+  // Actualizar estado de sesión cuando cambia la ruta (mismo tab)
+  useEffect(() => {
+    // Cierra menú al cambiar ruta
+    setIsMenuOpen(false)
+  }, [pathname])
+
+  const onAdminClick = async () => {
+    const saved = Number(localStorage.getItem("selectedUserId") || "")
+    if (!Number.isFinite(saved) || saved <= 0) {
+      toast.info("Primero selecciona un portafolio")
+      router.push("/portafolios")
+      return
+    }
+    try {
+      const u = await getUserById(saved)
+      if (!u) throw new Error("Usuario no encontrado")
+      setVerifyTarget({ id: u.id, name: u.name })
+      setIdentifier("")
+      setPassword("")
+      setVerifyError(null)
+      setVerifyOpen(true)
+    } catch (e: any) {
+      toast.error("No se pudo obtener el usuario", { description: e?.message || "Inténtalo de nuevo" })
+    }
+  }
+
+  const onVerifySubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!verifyTarget) return
+    setVerifying(true)
+    setVerifyError(null)
+    try {
+      const resp = await login({ identifier, password })
+      if (!resp?.userId || resp.userId !== verifyTarget.id) {
+        throw new Error("Credenciales inválidas para el usuario seleccionado")
+      }
+      // Persistir selección y verificación para el AdminProvider
+      localStorage.setItem("selectedAdminUser", JSON.stringify({ id: verifyTarget.id, name: verifyTarget.name }))
+      localStorage.setItem("verifiedAdminUserId", String(resp.userId))
+      setVerifyOpen(false)
+      router.push("/admin")
+    } catch (err: any) {
+      setVerifyError(err?.message || "No se pudo verificar")
+    } finally {
+      setVerifying(false)
+    }
+  }
 
   return (
     <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200/50 dark:border-gray-700/50 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          <Link href="/" className="flex items-center space-x-3 group">
+          <Link href="/portafolio" className="flex items-center space-x-3 group">
             <div className="bg-gradient-to-br from-blue-600 to-blue-800 p-2.5 rounded-xl shadow-lg group-hover:shadow-xl transition-all duration-300">
               <User className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h1 className="font-bold text-lg text-gray-900 dark:text-white">Javier Guerra</h1>
-              <p className="text-xs text-gray-600 dark:text-gray-400 -mt-0.5">Full Stack Developer</p>
+              <h1 className="font-bold text-lg text-gray-900 dark:text-white">{user?.name ?? "Tu Portafolio"}</h1>
+              <p className="text-xs text-gray-600 dark:text-gray-400 -mt-0.5">
+                {user?.experienceLevel ? user.experienceLevel : user?.yearsOfExperience != null ? `${user.yearsOfExperience}+ años` : "Selecciona un usuario"}
+              </p>
             </div>
           </Link>
 
@@ -51,6 +132,19 @@ export default function Navigation() {
                 </Link>
               )
             })}
+            {/* Admin: solicita credenciales del usuario seleccionado y luego navega */}
+            <button
+              onClick={onAdminClick}
+              className={cn(
+                "flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+                pathname?.startsWith("/admin")
+                  ? "text-blue-600 bg-blue-50 dark:bg-blue-900/30"
+                  : "text-gray-700 dark:text-gray-300 hover:text-blue-600 hover:bg-gray-100 dark:hover:bg-gray-800",
+              )}
+            >
+              <Shield className="h-4 w-4" />
+              <span>Admin</span>
+            </button>
           </nav>
 
           <div className="hidden md:block">
@@ -92,6 +186,19 @@ export default function Navigation() {
                   </Link>
                 )
               })}
+              {/* Admin en móvil */}
+              <button
+                onClick={() => { onAdminClick(); }}
+                className={cn(
+                  "flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
+                  pathname?.startsWith("/admin")
+                    ? "text-blue-600 bg-blue-50 dark:bg-blue-900/30"
+                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800",
+                )}
+              >
+                <Shield className="h-4 w-4" />
+                <span>Admin</span>
+              </button>
               <Link
                 href="/contacto"
                 onClick={() => setIsMenuOpen(false)}
@@ -103,6 +210,35 @@ export default function Navigation() {
           </div>
         )}
       </div>
+      {/* Diálogo de verificación para el acceso Admin */}
+      <Dialog open={verifyOpen} onOpenChange={setVerifyOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Verificar credenciales</DialogTitle>
+            <DialogDescription>
+              {verifyTarget ? (
+                <>Ingresa las credenciales de <strong>{verifyTarget.name}</strong> para entrar al panel.</>
+              ) : (
+                "Selecciona un portafolio primero"
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={onVerifySubmit} className="space-y-3">
+            <div>
+              <label className="block text-sm mb-1">Usuario o email</label>
+              <Input value={identifier} onChange={(e) => setIdentifier(e.target.value)} required autoFocus />
+            </div>
+            <div>
+              <label className="block text-sm mb-1">Contraseña</label>
+              <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            </div>
+            {verifyError && <p className="text-red-500 text-sm">{verifyError}</p>}
+            <DialogFooter>
+              <Button type="submit" disabled={verifying}>{verifying ? "Verificando…" : "Entrar"}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </header>
   )
 }

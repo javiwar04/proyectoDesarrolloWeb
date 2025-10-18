@@ -399,3 +399,98 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Por defecto, oculta bloques exclusivos del modo 1 hoja */
+.onepage-only { display: none; }
+
+/* Estilos para impresión */
+@media print {
+  /* Tipografía y escala general para PDF elegante */
+  body {
+    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji" !important;
+    line-height: 1.35;
+    font-size: 12pt;
+  }
+
+  /* Oculta elementos marcados explícitamente */
+  .print\\:hidden { display: none !important; }
+
+  /* Simplifica fondo para ahorrar tinta y mejorar legibilidad */
+  html, body {
+    background: white !important;
+    color: black !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Quita fondos decorativos y sombras que no imprimen bien */
+  .bg-card\/50, .bg-card\/90, .backdrop-blur, .backdrop-blur-sm, .shadow, .shadow-xl, .shadow-glow, .shadow-glow-accent, .glass-effect, .glass-effect-dark {
+    background: transparent !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+  }
+
+  /* Oculta navegación, header, footer y partículas si están presentes en el DOM */
+  header, nav, footer, .particles, .particle-background, [data-sonner-toaster] {
+    display: none !important;
+  }
+
+  /* Maximiza ancho del contenido imprimible */
+  .printable {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 8mm !important;
+  }
+
+  /* Tamaño de página y márgenes razonables */
+  @page {
+    /* Carta (Letter): 8.5in x 11in */
+    size: Letter;
+    margin: 0.6in 0.6in 0.7in 0.6in;
+  }
+
+  /* Evitar cortes abruptos en tarjetas y secciones clave */
+  .avoid-break, .avoid-break * {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Titulares más nítidos en impresión */
+  h1, h2, h3, .text-4xl, .text-3xl, .text-2xl {
+    color: #000 !important;
+  }
+
+  /* Quitar saturación de colores chillones en bullets */
+  .bg-primary, .text-primary, .border-primary, .border-primary\/60 {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* ============ Modo 1 hoja ============ */
+  html.onepage-print body {
+    font-size: 10pt;
+    line-height: 1.25;
+  }
+  html.onepage-print .printable {
+    padding: 0 6mm !important;
+  }
+  html.onepage-print .onepage-hide { display: none !important; }
+  html.onepage-print .onepage-compact { padding: 8px 12px !important; margin-bottom: 8px !important; }
+  html.onepage-print .onepage-truncate-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  html.onepage-print .grid { gap: 10px !important; }
+  html.onepage-print .grid-cols-1.print\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  html.onepage-print .onepage-only { display: block !important; }
+  html.onepage-print .cv-grid { grid-template-columns: 220px 1fr !important; gap: 12px !important; }
+  html.onepage-print .text-lg { font-size: 11pt !important; }
+  html.onepage-print .text-xl { font-size: 12pt !important; }
+  html.onepage-print h1 { font-size: 18pt !important; margin-bottom: 6px !important; }
+  html.onepage-print h2, html.onepage-print .text-2xl { font-size: 12pt !important; margin-bottom: 6px !important; }
+  html.onepage-print p, html.onepage-print li, html.onepage-print .text-sm { font-size: 9.5pt !important; }
+}

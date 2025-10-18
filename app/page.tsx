@@ -1,3 +1,9 @@
+
+import { redirect } from "next/navigation"
+
+export default function Home() {
+  redirect("/portafolios")
+
 "use client"
 
 import { useEffect, useState } from "react"
@@ -460,4 +466,6 @@ export default function HomePage() {
       </section>
     </div>
   )
+
 }
+

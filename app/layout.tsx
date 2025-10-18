@@ -3,9 +3,7 @@ import type { Metadata } from "next"
 import { GeistSans } from "geist/font/sans"
 import { GeistMono } from "geist/font/mono"
 import "./globals.css"
-import Navigation from "@/components/navigation"
-import { Footer } from "@/components/footer"
-import ParticleBackground from "@/components/particles"
+import SiteShell from "@/components/site-shell"
 
 export const metadata: Metadata = {
   title: "Mi Portafolio - Desarrollador Full Stack",
@@ -20,14 +18,9 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="es">
-      <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable} antialiased`}>
-        <ParticleBackground />
-        <div className="min-h-screen flex flex-col relative z-10">
-          <Navigation />
-          <main className="flex-1">{children}</main>
-          <Footer />
-        </div>
+    <html lang="es" suppressHydrationWarning>
+      <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable} antialiased`} suppressHydrationWarning>
+        <SiteShell>{children}</SiteShell>
       </body>
     </html>
   )

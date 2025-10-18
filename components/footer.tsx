@@ -1,8 +1,52 @@
+"use client"
+
 import Link from "next/link"
-import { Github, Linkedin, Mail, Heart, Code2, ExternalLink } from "lucide-react"
+import { useEffect, useState } from "react"
+import { Github, Linkedin, Mail, Heart, Code2, ExternalLink, Twitter, Facebook, Instagram } from "lucide-react"
+import { getUserById } from "@/lib/api"
+
+type FooterUser = {
+  id: number
+  name: string
+  experienceLevel?: string
+  yearsOfExperience?: number
+  generalDescription?: string
+  githubUrl?: string
+  linkedinUrl?: string
+  twitterUrl?: string
+  facebookUrl?: string
+  instagramUrl?: string
+  email?: string
+}
 
 export function Footer() {
   const currentYear = new Date().getFullYear()
+  const [user, setUser] = useState<FooterUser | null>(null)
+
+  useEffect(() => {
+    const saved = Number(localStorage.getItem("selectedUserId") || "")
+    if (!Number.isFinite(saved) || saved <= 0) return
+    ;(async () => {
+      try {
+        const u = await getUserById(saved)
+        if (u) {
+          setUser({
+            id: u.id,
+            name: u.name,
+            experienceLevel: u.experienceLevel,
+            yearsOfExperience: u.yearsOfExperience,
+            generalDescription: u.generalDescription,
+            githubUrl: u.gitHubUrl || u.githubUrl,
+            linkedinUrl: u.linkedInUrl || u.linkedinUrl,
+            twitterUrl: u.twitterUrl || u.xUrl,
+            facebookUrl: u.facebookUrl,
+            instagramUrl: u.instagramUrl,
+            email: u.email,
+          })
+        }
+      } catch {}
+    })()
+  }, [])
 
   return (
     <footer className="bg-gradient-to-t from-blue-950/5 to-transparent border-t border-border/50 mt-20">
@@ -19,15 +63,16 @@ export function Footer() {
               </div>
               <div>
                 <h3 className="font-bold text-lg bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
-                  Mi Portafolio
+                  {user?.name ?? "Mi Portafolio"}
                 </h3>
-                <p className="text-sm text-muted-foreground">Desarrollador Full Stack</p>
+                <p className="text-sm text-muted-foreground">
+                  {user?.experienceLevel ? user.experienceLevel : user?.yearsOfExperience != null ? `${user.yearsOfExperience}+ años` : ""}
+                </p>
               </div>
             </div>
-            <p className="text-muted-foreground text-sm leading-relaxed max-w-md">
-              Creando experiencias digitales excepcionales con código limpio y diseño intuitivo. Especializado en
-              desarrollo web moderno y soluciones innovadoras.
-            </p>
+            {user?.generalDescription && (
+              <p className="text-muted-foreground text-sm leading-relaxed max-w-md">{user.generalDescription}</p>
+            )}
           </div>
 
           {/* Quick Links */}
@@ -65,28 +110,64 @@ export function Footer() {
           <div>
             <h4 className="font-semibold text-foreground mb-4">Conecta Conmigo</h4>
             <div className="flex space-x-3">
-              <a
-                href="https://github.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-2 rounded-lg bg-muted hover:bg-blue-100 dark:hover:bg-blue-950/50 text-muted-foreground hover:text-blue-600 transition-all duration-200 group"
-              >
-                <Github className="h-5 w-5 group-hover:scale-110 transition-transform duration-200" />
-              </a>
-              <a
-                href="https://linkedin.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-2 rounded-lg bg-muted hover:bg-blue-100 dark:hover:bg-blue-950/50 text-muted-foreground hover:text-blue-600 transition-all duration-200 group"
-              >
-                <Linkedin className="h-5 w-5 group-hover:scale-110 transition-transform duration-200" />
-              </a>
-              <a
-                href="mailto:tu@email.com"
-                className="p-2 rounded-lg bg-muted hover:bg-blue-100 dark:hover:bg-blue-950/50 text-muted-foreground hover:text-blue-600 transition-all duration-200 group"
-              >
-                <Mail className="h-5 w-5 group-hover:scale-110 transition-transform duration-200" />
-              </a>
+              {user?.githubUrl && (
+                <a
+                  href={user.githubUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2 rounded-lg bg-muted hover:bg-blue-100 dark:hover:bg-blue-950/50 text-muted-foreground hover:text-blue-600 transition-all duration-200 group"
+                >
+                  <Github className="h-5 w-5 group-hover:scale-110 transition-transform duration-200" />
+                </a>
+              )}
+              {user?.linkedinUrl && (
+                <a
+                  href={user.linkedinUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2 rounded-lg bg-muted hover:bg-blue-100 dark:hover:bg-blue-950/50 text-muted-foreground hover:text-blue-600 transition-all duration-200 group"
+                >
+                  <Linkedin className="h-5 w-5 group-hover:scale-110 transition-transform duration-200" />
+                </a>
+              )}
+              {user?.twitterUrl && (
+                <a
+                  href={user.twitterUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2 rounded-lg bg-muted hover:bg-blue-100 dark:hover:bg-blue-950/50 text-muted-foreground hover:text-blue-600 transition-all duration-200 group"
+                >
+                  <Twitter className="h-5 w-5 group-hover:scale-110 transition-transform duration-200" />
+                </a>
+              )}
+              {user?.facebookUrl && (
+                <a
+                  href={user.facebookUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2 rounded-lg bg-muted hover:bg-blue-100 dark:hover:bg-blue-950/50 text-muted-foreground hover:text-blue-600 transition-all duration-200 group"
+                >
+                  <Facebook className="h-5 w-5 group-hover:scale-110 transition-transform duration-200" />
+                </a>
+              )}
+              {user?.instagramUrl && (
+                <a
+                  href={user.instagramUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2 rounded-lg bg-muted hover:bg-blue-100 dark:hover:bg-blue-950/50 text-muted-foreground hover:text-blue-600 transition-all duration-200 group"
+                >
+                  <Instagram className="h-5 w-5 group-hover:scale-110 transition-transform duration-200" />
+                </a>
+              )}
+              {user?.email && (
+                <a
+                  href={`mailto:${user.email}`}
+                  className="p-2 rounded-lg bg-muted hover:bg-blue-100 dark:hover:bg-blue-950/50 text-muted-foreground hover:text-blue-600 transition-all duration-200 group"
+                >
+                  <Mail className="h-5 w-5 group-hover:scale-110 transition-transform duration-200" />
+                </a>
+              )}
             </div>
           </div>
         </div>

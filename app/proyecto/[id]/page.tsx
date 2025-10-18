@@ -1,16 +1,3 @@
-
-import { redirect } from "next/navigation"
-
-// Redirige /portafolio/[id] a la ruta canónica /portafolio?id=...
-// La página /portafolio leerá ese id, fijará localStorage y limpiará la query
-export default async function PortafolioIdAlias({
-  params,
-}: {
-  params: Promise<{ id: string }>
-}) {
-  const { id } = await params
-  redirect(`/portafolio?id=${id}`)
-
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
@@ -59,11 +46,13 @@ export default function ProjectDetailPage() {
   const [current, setCurrent] = useState(0);
   const [carouselApi, setCarouselApi] = useState<any>(null);
   const [isHovering, setIsHovering] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [needsSelection, setNeedsSelection] = useState(false);
+  const [blocked, setBlocked] = useState(false);
 
-  // Autoplay sin plugin: avanza cada 3.5s y se pausa al hacer hover
   useEffect(() => {
     if (!carouselApi) return;
-    if (isHovering) return; // pausa si el mouse está encima
+    if (isHovering) return;
     const id = setInterval(() => {
       try {
         carouselApi?.scrollNext();
@@ -72,23 +61,43 @@ export default function ProjectDetailPage() {
     return () => clearInterval(id);
   }, [carouselApi, isHovering]);
 
+  // Cargar el usuario seleccionado desde localStorage (si no hay, se bloqueará la vista)
+  useEffect(() => {
+    const saved = Number(localStorage.getItem("selectedUserId") || "");
+    if (Number.isFinite(saved) && saved > 0) {
+      setSelectedUserId(saved);
+    } else {
+      setNeedsSelection(true);
+    }
+  }, []);
+
   useEffect(() => {
     if (!id) return;
+    if (selectedUserId === null) return; // Espera a conocer el usuario seleccionado o marcar needsSelection
     (async () => {
       setLoading(true);
       setError(null);
       try {
         const p = await getProjectById(id);
-        const pts = await getPoints();
-        setProject(p ?? null);
-        setPoints(Array.isArray(pts) ? pts.filter((x: any) => x.projectId === id) : []);
+        // Determinar propietario del proyecto
+        const ownerId = Number((p as any)?.user?.id ?? (p as any)?.userId ?? 0);
+        if (!ownerId || ownerId !== selectedUserId) {
+          // Bloquear acceso si no pertenece al usuario guardado (o no se puede determinar)
+          setBlocked(true);
+          setProject(null);
+          setPoints([]);
+        } else {
+          setProject(p ?? null);
+          const pts = await getPoints();
+          setPoints(Array.isArray(pts) ? pts.filter((x: any) => x.projectId === id) : []);
+        }
       } catch (e) {
         setError("No se pudo cargar el proyecto");
       } finally {
         setLoading(false);
       }
     })();
-  }, [id]);
+  }, [id, selectedUserId]);
 
   const images = useMemo(() => {
     const list: string[] = [];
@@ -97,9 +106,18 @@ export default function ProjectDetailPage() {
     return list;
   }, [project]);
 
+  if (needsSelection)
+    return (
+      <div className="max-w-5xl mx-auto px-4 py-10">
+        <p className="mb-4">Debes seleccionar un portafolio antes de ver proyectos.</p>
+        <Button asChild>
+          <a href="/portafolios">Ir a Portafolios</a>
+        </Button>
+      </div>
+    );
   if (loading) return <div className="max-w-5xl mx-auto px-4 py-10 text-muted-foreground">Cargando…</div>;
   if (error) return <div className="max-w-5xl mx-auto px-4 py-10 text-red-500">{error}</div>;
-  if (!project) return <div className="max-w-5xl mx-auto px-4 py-10">Proyecto no encontrado.</div>;
+  if (blocked || !project) return <div className="max-w-5xl mx-auto px-4 py-10">Proyecto no encontrado.</div>;
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-10 space-y-8">
@@ -120,7 +138,6 @@ export default function ProjectDetailPage() {
         </div>
       </div>
 
-      {/* Carrusel de imágenes */}
       {images.length > 0 && (
         <div
           className="relative"
@@ -158,7 +175,6 @@ export default function ProjectDetailPage() {
             <CarouselNext className="-right-4 md:-right-8" />
           </Carousel>
 
-          {/* Miniaturas */}
           {images.length > 1 && (
             <div className="mt-4 grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 gap-2">
               {images.map((img, i) => (
@@ -189,7 +205,6 @@ export default function ProjectDetailPage() {
         </div>
       )}
 
-      {/* Points */}
       <Card>
         <CardHeader>
           <CardTitle>Puntos clave</CardTitle>
@@ -207,7 +222,6 @@ export default function ProjectDetailPage() {
         </CardContent>
       </Card>
 
-      {/* Autor (opcional) */}
       {project.user && (
         <Card>
           <CardHeader>
@@ -234,7 +248,6 @@ export default function ProjectDetailPage() {
         </Card>
       )}
 
-      {/* Lightbox */}
       <Dialog open={lightboxOpen} onOpenChange={setLightboxOpen}>
         <DialogContent className="w-[95vw] max-w-screen-xl p-0 bg-black/90 border-0 overflow-hidden">
           {images.length > 0 && (
@@ -262,5 +275,4 @@ export default function ProjectDetailPage() {
       </Dialog>
     </div>
   );
-
 }
