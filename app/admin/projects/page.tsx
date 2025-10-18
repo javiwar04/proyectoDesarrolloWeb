@@ -1,5 +1,6 @@
 "use client";
 
+
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useAdminContext } from "@/components/admin/admin-context";
@@ -9,9 +10,17 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 
+import { useEffect, useState } from "react";
+import { getProjects, deleteProject } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import Link from "next/link";
+
+
 type Project = {
   id: number;
   title: string;
+
   description?: string;
   userId?: number;
   imageUrl?: string | null;
@@ -22,6 +31,12 @@ type Project = {
 
 export default function AdminProjectsPage() {
   const { selectedUserId, isUserVerified } = useAdminContext();
+
+  description: string;
+};
+
+export default function AdminProjectsPage() {
+
   const [items, setItems] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -31,9 +46,13 @@ export default function AdminProjectsPage() {
     setError(null);
     try {
       const data = await getProjects();
+
       const list = Array.isArray(data) ? data : [];
       // Guarda todos; se filtra en render según selectedUserId para evitar mostrar ajenos
       setItems(list);
+
+      setItems(Array.isArray(data) ? data : []);
+
     } catch (e) {
       setError("No se pudieron cargar los proyectos");
     } finally {
@@ -54,10 +73,20 @@ export default function AdminProjectsPage() {
       toast.success("Se eliminó correctamente");
     } catch (e: any) {
       toast.error(e?.message || "No se pudo eliminar");
+
+  const onDelete = async (id: number) => {
+    if (!confirm("¿Eliminar este proyecto?")) return;
+    try {
+      await deleteProject(id);
+      await load();
+    } catch (e) {
+      alert("Error eliminando el proyecto");
+
     }
   };
 
   useEffect(() => { load(); }, []);
+
   // Si cambia el usuario seleccionado, recalculamos la vista (sin re-fetch es suficiente)
   // Opcionalmente, podríamos recargar del backend si hace falta
   // useEffect(() => { load(); }, [selectedUserId]);
@@ -78,6 +107,18 @@ export default function AdminProjectsPage() {
       {(!selectedUserId || !isUserVerified) && (
         <p className="text-sm text-amber-600">Selecciona y verifica un usuario en el Dashboard para administrar sus proyectos.</p>
       )}
+
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Proyectos</h1>
+        <Button asChild>
+          <Link href="/admin/projects/new">Nuevo proyecto</Link>
+        </Button>
+      </div>
+
+
       {loading ? (
         <p className="text-muted-foreground">Cargando…</p>
       ) : error ? (
@@ -85,6 +126,7 @@ export default function AdminProjectsPage() {
           <p className="text-red-500">{error}</p>
           <Button onClick={load} variant="outline">Reintentar</Button>
         </div>
+
       ) : (!selectedUserId || !isUserVerified) ? (
         <p className="text-muted-foreground">No hay proyectos para mostrar.</p>
       ) : visibleItems.length === 0 ? (
@@ -127,6 +169,28 @@ export default function AdminProjectsPage() {
               </Card>
             );
           })}
+
+      ) : items.length === 0 ? (
+        <p className="text-muted-foreground">No hay proyectos aún.</p>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {items.map((p) => (
+            <Card key={p.id}>
+              <CardHeader className="flex-row items-center justify-between">
+                <CardTitle className="text-base">{p.title}</CardTitle>
+                <div className="flex gap-2">
+                  <Button asChild size="sm" variant="outline">
+                    <Link href={`/admin/projects/${p.id}`}>Editar</Link>
+                  </Button>
+                  <Button size="sm" variant="destructive" onClick={() => onDelete(p.id)}>Eliminar</Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground line-clamp-3">{p.description}</p>
+              </CardContent>
+            </Card>
+          ))}
+
         </div>
       )}
     </div>
